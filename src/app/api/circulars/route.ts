@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { processCircular } from "@/lib/pipeline";
+import { publicUrl } from "@/lib/http";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user || user.role !== "TEACHER") {
-    return NextResponse.redirect(new URL("/", req.url), 303);
+    return NextResponse.redirect(publicUrl(req, "/"), 303);
   }
 
   const form = await req.formData();
@@ -43,10 +44,10 @@ export async function POST(req: Request) {
         createdById: user.id,
       });
     }
-    return NextResponse.redirect(new URL(`/teacher/circulars/${id}`, req.url), 303);
+    return NextResponse.redirect(publicUrl(req, `/teacher/circulars/${id}`), 303);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Something went wrong while adding the circular.";
-    const url = new URL("/teacher", req.url);
+    const url = publicUrl(req, "/teacher");
     url.searchParams.set("error", message);
     return NextResponse.redirect(url, 303);
   }
