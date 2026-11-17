@@ -1,0 +1,81 @@
+// CircularSamajh — Prisma schema (SQLite prototype store; PostgreSQL-compatible
+// types only — see ../spec/DESIGN.md for the stated trade-off).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  role      String // TEACHER | PARENT
+  language  String // en | hi
+  createdAt DateTime @default(now())
+
+  circulars  Circular[]   @relation("CircularCreator")
+  reminders  Reminder[]
+  readStatus ReadStatus[]
+}
+
+model Circular {
+  id               String   @id @default(cuid())
+  title            String?
+  originalText     String
+  sourceType       String // PDF | TEXT | PHOTO
+  originalFileName String?
+  summaryEn        String?
+  summaryHi        String?
+  extractionFailed Boolean  @default(false)
+  isSample         Boolean  @default(false)
+  createdById      String
+  createdAt        DateTime @default(now())
+
+  createdBy  User         @relation("CircularCreator", fields: [createdById], references: [id])
+  actions    ActionItem[]
+  reminders  Reminder[]
+  readStatus ReadStatus[]
+}
+
+model ActionItem {
+  id         String  @id @default(cuid())
+  circularId String
+  action     String
+  dueDate    String? // ISO date (yyyy-mm-dd), copied verbatim from the circular; null when absent
+  amount     String? // verbatim amount string, e.g. "₹2,500"; null when absent
+  document   String? // document the parent must bring/send; null when absent
+  position   Int
+
+  circular  Circular   @relation(fields: [circularId], references: [id], onDelete: Cascade)
+  reminders Reminder[]
+}
+
+model Reminder {
+  id           String   @id @default(cuid())
+  circularId   String
+  actionItemId String
+  parentId     String
+  dueDate      DateTime
+
+  circular   Circular   @relation(fields: [circularId], references: [id], onDelete: Cascade)
+  actionItem ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  parent     User       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([actionItemId, parentId])
+}
+
+model ReadStatus {
+  id         String   @id @default(cuid())
+  circularId String
+  parentId   String
+  openedAt   DateTime @default(now())
+
+  circular Circular @relation(fields: [circularId], references: [id], onDelete: Cascade)
+  parent   User     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([circularId, parentId])
+}
